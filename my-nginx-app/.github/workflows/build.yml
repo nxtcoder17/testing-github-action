@@ -1,0 +1,41 @@
+name: API container images
+
+on:
+  workflow_call:
+
+jobs:
+  container_image:
+    runs-on: ubuntu-latest
+    name: kloudlite API
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Build & Push Container Images
+        env:
+          IMAGE_TAG: ${{ steps.setup.outputs.image_tag }}
+          OVERRIDE_PUSHED_IMAGE: ${{ steps.setup.outputs.override_pushed_image }}
+        run: |
+          pushd $SUBMODULE
+          ls -al .
+
+          set +e
+          image="ghcr.io/${{ github.repository }}/$SUBMODULE/${{ matrix.app }}:$IMAGE_TAG"
+          echo "image is $image"
+          docker manifest inspect $image
+          exit_status=$?
+          if [ $exit_status -eq 0 ]; then
+            [ "$OVERRIDE_PUSHED_IMAGE" = "false" ] && echo "image ($image) already exists, and override image is disable, exiting" && exit 0
+            echo "image exists, but override pushed image is set to true. proceeding with building image"
+          fi
+
+          set -e
+
+          pushd apps/${{ matrix.app }}
+          task container:build-and-push Image="$image"
+          popd
+
+          popd
+

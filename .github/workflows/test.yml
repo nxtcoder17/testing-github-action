@@ -1,0 +1,21 @@
+name: API container images
+
+on:
+  push:
+
+jobs:
+  container_image:
+    runs-on: ubuntu-latest
+    name: kloudlite API
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: ./my-nginx-app/.github/actions/build/
+        with:
+          image_repository: "ghcr.io/${{ github.repository }}"
+          image_tag: "latest"
+          dockerfile: ./my-nginx-app/Dockerfile
+
