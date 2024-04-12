@@ -1,0 +1,19 @@
+name: IAC container image
+
+on:
+  workflow_dispatch:
+
+jobs:
+  container_image:
+    runs-on: ubuntu-latest
+    name: build kloudlite IAC image
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: ./.github/actions/test-kloudlite-iac-repo/
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+

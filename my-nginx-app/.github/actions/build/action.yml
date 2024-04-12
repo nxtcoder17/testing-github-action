@@ -42,22 +42,6 @@ runs:
         OVERRIDE_PUSHED_IMAGE: ${{ steps.setup.outputs.override_pushed_image }}
       shell: bash
       run: |
-        # script_dir="${BASH_SOURCE[0]}"
-        # echo "SCRIPT_DIR=$script_dir"
-        #
-        # dockerfilepath="$script_dir/../../Dockerfile"
-        # echo "dockerfile must be at $dockerfilepath"
-
         cat ${{inputs.dockerfile}}
 
         # pushd $script_dir
-        # ls -al .
-        #
-        # set +e
-        # image="${{ inputs.image_repository }}:${{ inputs.image_tag }}"
-        # echo "image is $image"
-        #
-        # docker build -t ../
-        #
-        # popd
-
