@@ -1,0 +1,110 @@
+name: 'build kloudlite api action'
+description: 'builds kloudlite APIs'
+
+inputs:
+  github_token:
+    description: 'GitHub Token'
+    required: true
+
+  save_go_cache:
+    description: 'save_go_cache'
+    type: boolean
+    default: true
+    required: false
+
+  directory:
+    description: 'cd to this directory'
+    default: api
+
+  # env vars
+  GOMODCACHE: 
+    description: go env-var
+    default: ".go-mod-cache"
+
+  GOCACHE: 
+    description: go env-var
+    default: ".go-cache"
+
+runs:
+  using: 'composite'
+  steps:
+    - shell: bash
+      run: |+
+        git clone https://github.com/kloudlite/api ${{ inputs.directory }}
+        cd ${{inputs.directory}}
+        git checkout main
+
+    - name: setup ENV Variables
+      shell: bash
+      run: |+
+        echo "GOMODCACHE=${{github.workspace}}/actions/go-mod-cache" >> $GITHUB_ENV
+        echo "GOCACHE=${{github.workspace}}/actions/go-cache" >> $GITHUB_ENV
+
+    # - name: Install NIX
+    #   uses: DeterminateSystems/nix-installer-action@main
+    #
+    # - name: nix cache
+    #   uses: DeterminateSystems/magic-nix-cache-action@main
+    #
+    # - name: nix flake check
+    #   uses: DeterminateSystems/flake-checker-action@main
+    #   with:
+    #     flake-lock-path: "./${{inputs.directory}}/flake.lock"
+    #
+    # - name: Nix Develop Action
+    #   uses: nicknovitski/nix-develop@v1.1.0
+    #   with:
+    #     arguments: "./${{ inputs.directory }}#default"
+
+    - name: Create Image Tag
+      id: gitref_branch
+      if: startsWith(github.ref, 'refs/heads/release')
+      shell: bash
+      working-directory: ./${{inputs.directory}}
+      run: |
+        set +e
+        IMAGE_TAG=${GITHUB_REF#refs/heads/release-}
+        echo "$IMAGE_TAG" | grep -i '\-nightly$'
+        if [ $? -ne 0 ]; then
+          IMAGE_TAG="$IMAGE_TAG-nightly"
+        fi
+        set -e
+
+        echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+        echo "override_pushed_image=true" >> $GITHUB_OUTPUT
+
+    - name: setup
+      id: setup
+      uses: ./.github/actions/setup
+      with:
+        nix-develop-arguments: "./api#default"
+        flake-lock: ./api/flake.lock
+        # directory: ./api
+        # github_token: ${{ inputs.github_token }}
+        # cache_paths: |+
+        #   ${{ env.GOMODCACHE }}
+        #   ${{ env.GOCACHE }}
+
+    - name: Setup Caches
+      # if: ${{ inputs.cache_paths.length > 0 }}
+      uses: actions/cache@v4
+      env:
+        cache-name: go-cache-${{ github.repository_id }}
+      with:
+        path: |+
+          ${{ env.GOMODCACHE }}
+          ${{ env.GOCACHE }}
+        key: ${{ runner.os }}-${{github.repository_id}}-${{ inputs.directory }}-setup-${{ hashFiles('./api/go.sum', './api/go.mod') }}
+        save-always: true
+        restore-keys: |
+          ${{ runner.os }}-${{github.repository_id}}-${{ inputs.directory }}-setup-
+          ${{ runner.os }}-${{github.repository_id}}-
+
+    - name: build
+      shell: bash
+      env:
+        GOMODCACHE: ${{ env.GOMODCACHE }}
+        GOCACHE: ${{ env.GOCACHE }}
+      working-directory: "./api/apps/auth"
+      run: |+
+        task build

@@ -1,0 +1,20 @@
+name: builds kloudlite APIs
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build_image:
+    runs-on: ubuntu-latest
+    name: build kloudlite API auth
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: ./.github/actions/build-kloudlite-api
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # directory: api
+
