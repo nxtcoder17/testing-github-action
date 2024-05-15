@@ -56,37 +56,17 @@ runs:
     #   with:
     #     arguments: "./${{ inputs.directory }}#default"
 
-    - name: Create Image Tag
-      id: gitref_branch
-      if: startsWith(github.ref, 'refs/heads/release')
-      shell: bash
-      working-directory: ./${{inputs.directory}}
-      run: |
-        set +e
-        IMAGE_TAG=${GITHUB_REF#refs/heads/release-}
-        echo "$IMAGE_TAG" | grep -i '\-nightly$'
-        if [ $? -ne 0 ]; then
-          IMAGE_TAG="$IMAGE_TAG-nightly"
-        fi
-        set -e
-
-        echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
-        echo "override_pushed_image=true" >> $GITHUB_OUTPUT
-
     - name: setup
       id: setup
       uses: ./.github/actions/setup
       with:
         nix-develop-arguments: "./api#default"
         flake-lock: ./api/flake.lock
-        # directory: ./api
-        # github_token: ${{ inputs.github_token }}
-        # cache_paths: |+
-        #   ${{ env.GOMODCACHE }}
-        #   ${{ env.GOCACHE }}
+        cache_paths: |+
+          ${{ env.GOMODCACHE }}
+          ${{ env.GOCACHE }}
 
     - name: Setup Caches
-      # if: ${{ inputs.cache_paths.length > 0 }}
       uses: actions/cache@v4
       env:
         cache-name: go-cache-${{ github.repository_id }}
@@ -94,17 +74,33 @@ runs:
         path: |+
           ${{ env.GOMODCACHE }}
           ${{ env.GOCACHE }}
-        key: ${{ runner.os }}-${{github.repository_id}}-${{ inputs.directory }}-setup-${{ hashFiles('./api/go.sum', './api/go.mod') }}
+        key: ${{ runner.os }}-${{github.repository_id}}-${{ inputs.directory }}-setup-${{ hashFiles('./api/go.sum', './api/go.mod', env.GOMODCACHE, env.GOCACHE) }}
         save-always: true
         restore-keys: |
           ${{ runner.os }}-${{github.repository_id}}-${{ inputs.directory }}-setup-
           ${{ runner.os }}-${{github.repository_id}}-
 
-    - name: build
+    - name: build auth
       shell: bash
       env:
         GOMODCACHE: ${{ env.GOMODCACHE }}
         GOCACHE: ${{ env.GOCACHE }}
+
+        IMAGE_TAG: ${{ steps.setup.outputs.image_tag }}
       working-directory: "./api/apps/auth"
       run: |+
+        echo "image tag: ${IMAGE_TAG}"
+        task build
+
+    - name: build console
+      shell: bash
+      env:
+        GOMODCACHE: ${{ env.GOMODCACHE }}
+        GOCACHE: ${{ env.GOCACHE }}
+
+        IMAGE_TAG: ${{ steps.setup.outputs.image_tag }}
+      working-directory: "./api/apps/console"
+      run: |+
+        echo "image tag: ${IMAGE_TAG}"
+
         task build
