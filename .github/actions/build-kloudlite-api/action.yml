@@ -102,5 +102,4 @@ runs:
       working-directory: "./api/apps/console"
       run: |+
         echo "image tag: ${IMAGE_TAG}"
-
         task build

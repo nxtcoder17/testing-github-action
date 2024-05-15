@@ -1,0 +1,79 @@
+name: builds kloudlite Operator
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  go-mod-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - shell: bash
+        run: |+
+          git clone -b feat/edge-gateway --single-branch https://github.com/kloudlite/operator operator
+          cd operator
+
+      - name: build-and-push
+        uses: ./operator/.github/actions/build-operator-images/
+        with:
+          cache_prefix: go-mod-cache
+
+          cachix_enabled: true
+          cachix_auth_token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          git_directory: "./operator"
+
+          go_mod_download: true
+
+  build-images:
+    needs: go-mod-cache
+    strategy:
+      fail-fast: false
+      matrix:
+        images:
+          - name: agent-operator
+          - name: platform-operator
+          - name: wireguard-operator
+          - name: helm-charts-operator
+          - name: networking-operator
+          - name: networking/cmd/ip-binding-controller
+          - name: networking/cmd/ip-manager
+          - name: networking/cmd/webhook
+          - name: networking/cmd/dns
+        arch: [amd64, arm64]
+
+    runs-on: ubuntu-latest
+    name: ${{ matrix.images.name }}-${{ matrix.arch }}
+    steps:
+      - shell: bash
+        run: |+
+          git clone -b feat/edge-gateway --single-branch https://github.com/kloudlite/operator operator
+          cd operator
+
+      - name: build-and-push
+        uses: ./operator/.github/actions/build-operator-images/
+        with:
+          cache_prefix: ${{ matrix.images.name }}-${{ matrix.arch }}
+          
+          cachix_enabled: true
+          cachix_auth_token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+
+          docker_enabled: true
+
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          git_directory: "./operator"
+
+          platform-operator: ${{ matrix.images.name == 'platform-operator' }}
+          agent-operator: ${{ matrix.images.name == 'agent-operator' }}
+          wireguard-operator: ${{ matrix.images.name == 'wireguard-operator' }}
+          helm-charts-operator: ${{ matrix.images.name == 'helm-charts-operator' }}
+          networking-operator: ${{ matrix.images.name == 'networking-operator' }}
+
+          networking_ip-binding-controller: ${{ matrix.images.name == 'networking/cmd/ip-binding-controller' }}
+          networking_ip-manager: ${{ matrix.images.name == 'networking/cmd/ip-manager' }}
+          networking_dns: ${{ matrix.images.name == 'networking/cmd/dns' }}
+          networking_webhook: ${{ matrix.images.name == 'networking/cmd/webhook' }}
