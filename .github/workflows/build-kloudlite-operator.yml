@@ -8,29 +8,29 @@ permissions:
   packages: write
 
 jobs:
-  go-mod-cache:
-    runs-on: ubuntu-latest
-    steps:
-      - shell: bash
-        run: |+
-          git clone -b feat/edge-gateway --single-branch https://github.com/kloudlite/operator operator
-          cd operator
-
-      - name: build-and-push
-        uses: ./operator/.github/actions/build-operator-images/
-        with:
-          cache_prefix: go-mod-cache
-
-          cachix_enabled: true
-          cachix_auth_token: ${{ secrets.CACHIX_AUTH_TOKEN }}
-
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          git_directory: "./operator"
-
-          go_mod_download: true
+  # go-mod-cache:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - shell: bash
+  #       run: |+
+  #         git clone -b feat/edge-gateway --single-branch https://github.com/kloudlite/operator operator
+  #         cd operator
+  #
+  #     - name: build-and-push
+  #       uses: ./operator/.github/actions/build-operator-images/
+  #       with:
+  #         cache_prefix: go-mod-cache
+  #
+  #         cachix_enabled: true
+  #         cachix_auth_token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+  #
+  #         github_token: ${{ secrets.GITHUB_TOKEN }}
+  #         git_directory: "./operator"
+  #
+  #         go_mod_download: true
 
   build-images:
-    needs: go-mod-cache
+    # needs: go-mod-cache
     strategy:
       fail-fast: false
       matrix:
@@ -44,10 +44,9 @@ jobs:
           - name: networking/cmd/ip-manager
           - name: networking/cmd/webhook
           - name: networking/cmd/dns
-        arch: [amd64, arm64]
 
     runs-on: ubuntu-latest
-    name: ${{ matrix.images.name }}-${{ matrix.arch }}
+    name: ${{ matrix.images.name }}
     steps:
       - shell: bash
         run: |+
@@ -57,7 +56,7 @@ jobs:
       - name: build-and-push
         uses: ./operator/.github/actions/build-operator-images/
         with:
-          cache_prefix: ${{ matrix.images.name }}-${{ matrix.arch }}
+          cache_prefix: ${{ matrix.images.name }}
           
           cachix_enabled: true
           cachix_auth_token: ${{ secrets.CACHIX_AUTH_TOKEN }}
